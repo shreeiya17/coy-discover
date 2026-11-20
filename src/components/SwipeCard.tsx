@@ -55,7 +55,7 @@ export default function SwipeCard({ profile, onSwipe, ref }: Props) {
     >
       <Avatar name={profile.name} src={profile.photo} className="pointer-events-none h-full w-full text-9xl" />
 
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent p-5 pt-28 text-white">
+      <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/85 via-black/45 to-transparent p-5 pt-28 text-white">
         <h2 className="text-2xl font-bold">
           {profile.name}, {profile.age}
         </h2>

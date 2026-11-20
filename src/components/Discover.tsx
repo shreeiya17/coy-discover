@@ -9,6 +9,18 @@ import SwipeCard, { type CardHandle } from "./SwipeCard";
 
 type View = "swipe" | "matches";
 
+async function fetchAll() {
+    const [f, m] = await Promise.all([
+      fetch("/api/feed", { cache: "no-store" }),
+      fetch("/api/matches", { cache: "no-store" }),
+    ]);
+    if (!f.ok || !m.ok) throw new Error("bad response");
+    return {
+      profiles: (await f.json()).profiles as Profile[],
+      matches: (await m.json()).matches as Profile[],
+    };
+  }
+
 export default function Discover() {
   const [queue, setQueue] = useState<Profile[] | null>(null);
   const [matches, setMatches] = useState<Profile[]>([]);
@@ -17,25 +29,27 @@ export default function Discover() {
   const [error, setError] = useState<string | null>(null);
   const cardRef = useRef<CardHandle>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const [f, m] = await Promise.all([
-        fetch("/api/feed", { cache: "no-store" }),
-        fetch("/api/matches", { cache: "no-store" }),
-      ]);
-      if (!f.ok || !m.ok) throw new Error("bad response");
-      setQueue((await f.json()).profiles);
-      setMatches((await m.json()).matches);
-      setError(null);
-    } catch {
-      setError("Could not load profiles. Please check that the server is running.");
-      setQueue((q) => q ?? []);
-    }
+  
+  useEffect(() => {
+    let alive = true;
+    fetchAll()
+      .then((d) => {
+        if (!alive) return;
+        setQueue(d.profiles);
+        setMatches(d.matches);
+        setError(null);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setError("Could not load profiles. Please check that the server is running.");
+        setQueue((q) => q ?? []);
+      });
+    return () => {
+      alive = false;
+    };
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+
 
   const swipe = useCallback(async (profile: Profile, direction: "like" | "pass") => {
     setQueue((q) => (q ?? []).filter((p) => p.id !== profile.id));
@@ -70,8 +84,16 @@ export default function Discover() {
 
   const resetDemo = async () => {
     setQueue(null);
-    await fetch("/api/reset", { method: "POST" });
-    await load();
+    try {
+      await fetch("/api/reset", { method: "POST" });
+      const d = await fetchAll();
+      setQueue(d.profiles);
+      setMatches(d.matches);
+      setError(null);
+    } catch {
+      setError("Could not reset the demo data. Please try again.");
+      setQueue([]);
+    }
   };
 
   const top = queue?.[0];
@@ -173,7 +195,7 @@ export default function Discover() {
               <ul className="grid grid-cols-2 gap-3">
                 {matches.map((m) => (
                   <li key={m.id} className="overflow-hidden rounded-2xl bg-neutral-50 shadow">
-                    <Avatar name={m.name} src={m.photo} className="aspect-[3/4] w-full text-6xl" />
+                    <Avatar name={m.name} src={m.photo} className="aspect-3/4 w-full text-6xl" />
                     <div className="p-3">
                       <p className="font-bold">
                         {m.name}, {m.age}

@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import { seedIfEmpty } from "./seed";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -10,6 +11,7 @@ declare global {
 function open() {
     const file = process.env.COY_DB_PATH ?? path.join(process.cwd(), "data", "coy.db");
     if (file !== ":memory:") fs.mkdirSync(path.dirname(file), { recursive: true });
+    
     const db = new Database(file);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
@@ -37,6 +39,7 @@ function open() {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+  if (file !== ":memory:") seedIfEmpty(db); // tests use :memory: and seed their own fixtures
   return db;
 }
 
